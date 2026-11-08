@@ -24,3 +24,19 @@ proguard/
 
 # Log Files
 *.log
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+coolweather.db
+
+# Node (web client later)
+node_modules/
+dist/
+*.tsbuildinfo
