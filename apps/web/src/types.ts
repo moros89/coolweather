@@ -1,3 +1,12 @@
+export interface WatchlistEntry {
+  id: string;
+  serverId?: number;
+  name: string;
+  lat: number;
+  lon: number;
+  timezone: string;
+}
+
 export interface LocationResult {
   name: string;
   lat: number;

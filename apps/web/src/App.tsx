@@ -1,13 +1,19 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { fetchReport, isStaticSite, searchLocations } from "./api";
 import { ReportPanel } from "./components/ReportPanel";
 import { SearchHero } from "./components/SearchHero";
 import { LogoMark } from "./components/LogoMark";
+import { WatchlistPanel } from "./components/WatchlistPanel";
 import { WeatherBackground } from "./components/WeatherBackground";
-import type { LocationResult, WeatherReport } from "./types";
+import { parseLocationFromUrl, writeLocationToUrl } from "./lib/urlState";
+import type { LocationResult, WatchlistEntry, WeatherReport } from "./types";
 import { isBrightSkyScene, sceneForCode } from "./weatherScene";
 
 type QueryMode = "city" | "coordinates";
+
+function locationKey(lat: number, lon: number): string {
+  return `${lat.toFixed(4)},${lon.toFixed(4)}`;
+}
 
 export function App() {
   const [mode, setMode] = useState<QueryMode>("city");
@@ -19,6 +25,8 @@ export function App() {
   const [loadingReport, setLoadingReport] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [report, setReport] = useState<WeatherReport | null>(null);
+  const [activeKey, setActiveKey] = useState<string | null>(null);
+  const urlBootstrapped = useRef(false);
 
   useEffect(() => {
     if (mode !== "city") return;
@@ -48,9 +56,19 @@ export function App() {
       setLoadingReport(true);
       setError(null);
       setSuggestions([]);
+      setActiveKey(locationKey(opts.lat, opts.lon));
       try {
         const data = await fetchReport({ ...opts, historyDays: 0 });
         setReport(data);
+        writeLocationToUrl({
+          lat: opts.lat,
+          lon: opts.lon,
+          name: opts.name ?? data.location.name,
+          timezone: opts.timezone ?? data.location.timezone,
+        });
+        if (opts.name) setQuery(opts.name);
+        setLat(String(opts.lat));
+        setLon(String(opts.lon));
       } catch (e) {
         setReport(null);
         setError(e instanceof Error ? e.message : "Failed to load report");
@@ -60,6 +78,24 @@ export function App() {
     },
     [],
   );
+
+  useEffect(() => {
+    if (urlBootstrapped.current) return;
+    urlBootstrapped.current = true;
+    const fromUrl = parseLocationFromUrl();
+    if (fromUrl) {
+      setMode("coordinates");
+      setLat(String(fromUrl.lat));
+      setLon(String(fromUrl.lon));
+      if (fromUrl.name) setQuery(fromUrl.name);
+      void loadReport({
+        lat: fromUrl.lat,
+        lon: fromUrl.lon,
+        name: fromUrl.name,
+        timezone: fromUrl.timezone,
+      });
+    }
+  }, [loadReport]);
 
   const onSelectLocation = (loc: LocationResult) => {
     const name = [loc.name, loc.country].filter(Boolean).join(", ");
@@ -83,6 +119,16 @@ export function App() {
     void loadReport({ lat: latN, lon: lonN });
   };
 
+  const onWatchlistSelect = (entry: WatchlistEntry) => {
+    setQuery(entry.name);
+    void loadReport({
+      lat: entry.lat,
+      lon: entry.lon,
+      name: entry.name,
+      timezone: entry.timezone,
+    });
+  };
+
   const weatherCode = report?.current.weather_code;
   const skyScene = sceneForCode(weatherCode);
   const brightSky = isBrightSkyScene(skyScene);
@@ -91,62 +137,72 @@ export function App() {
     <>
       <WeatherBackground weatherCode={weatherCode} />
       <div className="page" data-bright-sky={brightSky ? "" : undefined}>
-      <header className="top">
-        <div className="brand">
-          <LogoMark className="brand-logo" size={46} />
-          <h1>
-            Cool<span className="serif">Weather</span>
-          </h1>
-        </div>
-        <p className="tagline">Search any place and get a live weather report from Open-Meteo.</p>
-      </header>
-
-      <main className="main">
-        <SearchHero
-          mode={mode}
-          onModeChange={setMode}
-          query={query}
-          onQueryChange={setQuery}
-          lat={lat}
-          lon={lon}
-          onLatChange={setLat}
-          onLonChange={setLon}
-          onCoordinateSubmit={onCoordinateSubmit}
-          suggestions={suggestions}
-          searching={searching}
-          onSelectLocation={onSelectLocation}
-        />
-
-        {error && (
-          <div className="banner banner-error" role="alert">
-            {error}
+        <header className="top">
+          <div className="brand">
+            <LogoMark className="brand-logo" size={46} />
+            <h1>
+              Cool<span className="serif">Weather</span>
+            </h1>
           </div>
-        )}
+          <p className="tagline">Search any place and get a live weather report from Open-Meteo.</p>
+        </header>
 
-        {loadingReport && (
-          <div className="banner banner-loading" aria-live="polite">
-            Loading report…
+        <main className="main layout-with-watchlist">
+          <div className="main-primary">
+            <SearchHero
+              mode={mode}
+              onModeChange={setMode}
+              query={query}
+              onQueryChange={setQuery}
+              lat={lat}
+              lon={lon}
+              onLatChange={setLat}
+              onLonChange={setLon}
+              onCoordinateSubmit={onCoordinateSubmit}
+              suggestions={suggestions}
+              searching={searching}
+              onSelectLocation={onSelectLocation}
+            />
+
+            {error && (
+              <div className="banner banner-error" role="alert">
+                {error}
+              </div>
+            )}
+
+            {loadingReport && (
+              <div className="banner banner-loading" aria-live="polite">
+                Loading report…
+              </div>
+            )}
+
+            {report && !loadingReport && <ReportPanel report={report} />}
           </div>
-        )}
 
-        {report && !loadingReport && <ReportPanel report={report} />}
-      </main>
+          <aside className="main-aside">
+            <WatchlistPanel
+              report={report}
+              activeKey={activeKey}
+              onSelect={onWatchlistSelect}
+            />
+          </aside>
+        </main>
 
-      <footer className="footer">
-        Data via{" "}
-        <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">
-          Open-Meteo
-        </a>
-        {!isStaticSite && (
-          <>
-            {" · "}
-            API{" "}
-            <a href="http://127.0.0.1:8000/docs" target="_blank" rel="noreferrer">
-              docs
-            </a>
-          </>
-        )}
-      </footer>
+        <footer className="footer">
+          Data via{" "}
+          <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">
+            Open-Meteo
+          </a>
+          {!isStaticSite && (
+            <>
+              {" · "}
+              API{" "}
+              <a href="http://127.0.0.1:8000/docs" target="_blank" rel="noreferrer">
+                docs
+              </a>
+            </>
+          )}
+        </footer>
       </div>
     </>
   );
