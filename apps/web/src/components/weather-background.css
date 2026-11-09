@@ -65,11 +65,12 @@
 /* Sun (clear sky) */
 .weather-sun-scene {
   position: absolute;
-  top: 2%;
-  right: 4%;
-  width: min(220px, 38vw);
-  height: min(220px, 38vw);
+  top: 3%;
+  right: max(2%, calc(50% - 26rem));
+  width: min(180px, 32vw);
+  height: min(180px, 32vw);
   pointer-events: none;
+  opacity: 0.92;
 }
 
 @media (max-width: 640px) {

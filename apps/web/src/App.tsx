@@ -83,7 +83,7 @@ export function App() {
     if (urlBootstrapped.current) return;
     urlBootstrapped.current = true;
     const fromUrl = parseLocationFromUrl();
-    if (fromUrl) {
+    if (fromUrl && (fromUrl.lat !== 0 || fromUrl.lon !== 0)) {
       setMode("coordinates");
       setLat(String(fromUrl.lat));
       setLon(String(fromUrl.lon));
@@ -147,45 +147,41 @@ export function App() {
           <p className="tagline">Search any place and get a live weather report from Open-Meteo.</p>
         </header>
 
-        <main className="main layout-with-watchlist">
-          <div className="main-primary">
-            <SearchHero
-              mode={mode}
-              onModeChange={setMode}
-              query={query}
-              onQueryChange={setQuery}
-              lat={lat}
-              lon={lon}
-              onLatChange={setLat}
-              onLonChange={setLon}
-              onCoordinateSubmit={onCoordinateSubmit}
-              suggestions={suggestions}
-              searching={searching}
-              onSelectLocation={onSelectLocation}
-            />
+        <main className="main">
+          <SearchHero
+            mode={mode}
+            onModeChange={setMode}
+            query={query}
+            onQueryChange={setQuery}
+            lat={lat}
+            lon={lon}
+            onLatChange={setLat}
+            onLonChange={setLon}
+            onCoordinateSubmit={onCoordinateSubmit}
+            suggestions={suggestions}
+            searching={searching}
+            onSelectLocation={onSelectLocation}
+          />
 
-            {error && (
-              <div className="banner banner-error" role="alert">
-                {error}
-              </div>
-            )}
+          <WatchlistPanel
+            report={report}
+            activeKey={activeKey}
+            onSelect={onWatchlistSelect}
+          />
 
-            {loadingReport && (
-              <div className="banner banner-loading" aria-live="polite">
-                Loading report…
-              </div>
-            )}
+          {error && (
+            <div className="banner banner-error" role="alert">
+              {error}
+            </div>
+          )}
 
-            {report && !loadingReport && <ReportPanel report={report} />}
-          </div>
+          {loadingReport && (
+            <div className="banner banner-loading" aria-live="polite">
+              Loading report…
+            </div>
+          )}
 
-          <aside className="main-aside">
-            <WatchlistPanel
-              report={report}
-              activeKey={activeKey}
-              onSelect={onWatchlistSelect}
-            />
-          </aside>
+          {report && !loadingReport && <ReportPanel report={report} />}
         </main>
 
         <footer className="footer">
