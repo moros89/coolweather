@@ -39,4 +39,5 @@ coolweather.db
 # Node (web client later)
 node_modules/
 dist/
+.vite/
 *.tsbuildinfo
