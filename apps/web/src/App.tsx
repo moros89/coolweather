@@ -134,7 +134,7 @@ export function App() {
   const brightSky = isBrightSkyScene(skyScene);
 
   return (
-    <>
+    <div className="app-root">
       <WeatherBackground weatherCode={weatherCode} />
       <div className="page" data-bright-sky={brightSky ? "" : undefined}>
         <header className="top">
@@ -200,6 +200,6 @@ export function App() {
           )}
         </footer>
       </div>
-    </>
+    </div>
   );
 }
